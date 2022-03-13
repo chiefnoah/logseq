@@ -1374,7 +1374,8 @@
       ffirst))
 
 (defn get-namespace-pages
-  "Accepts both sanitized and unsanitized namespaces"
+  "Accepts both sanitized and unsanitized namespaces.
+  Namespace is a full page :block/name"
   [repo namespace]
   (assert (string? namespace))
   (let [namespace (util/page-name-sanity-lc namespace)]
@@ -1414,6 +1415,7 @@
   (:block/namespace (db-utils/entity repo [:block/name (util/page-name-sanity-lc page)])))
 
 (defn get-page-namespace-routes
+  "Pulls pages from datastore that have name ending in (:block/name page)"
   [repo page]
   (assert (string? page))
   (when-let [db (conn/get-conn repo)]
@@ -1431,6 +1433,15 @@
                               '[:db/id :block/name :block/original-name
                                 {:block/file [:db/id :file/path]}]
                               ids))))))
+
+(defn get-page-by-name
+  "Retrives page by it's :block/name property"
+  [repo page-name]
+  (assert (string? page-name))
+  (when-let [db (conn/get-conn repo)]
+    (when-not (string/blank? page-name)
+      (let [page-name (util/page-name-sanity-lc (string/trim page-name))]
+        (db-utils/entity repo [:block/name page-name])))))
 
 (defn get-orphaned-pages
   [{:keys [repo pages empty-ref-f]

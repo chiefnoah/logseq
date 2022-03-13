@@ -367,6 +367,7 @@
                                                                               :title
                                                                               new-name
                                                                               front-matter?)}))
+            ; TODO: update :block/namespace if appropriate, create page if not exist
             page-txs            [{:db/id               (:db/id page)
                                   :block/uuid          (:block/uuid page)
                                   :block/name          new-page-name

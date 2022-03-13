@@ -10,31 +10,83 @@
             [rum.core :as rum]
             [frontend.util :as util]))
 
+;; (defn get-relation
+;;   [page]
+;;   (when-let [page (or (text/get-nested-page-name page) page)]
+;;     (when (or (text/namespace-page? page)
+;;               (:block/_namespace (db/entity [:block/name (util/page-name-sanity-lc page)])))
+;;       (let [repo (state/get-current-repo)
+;;             namespace-pages (db/get-namespace-pages repo page)
+;;             parent-routes (db-model/get-page-namespace-routes repo page)
+;;             pages (->> (concat namespace-pages parent-routes)
+;;                        (distinct)
+;;                        (sort-by :block/name)
+;;                        (map (fn [page]
+;;                               (or (:block/original-name page) (:block/name page))))
+;;                        (map #(string/split % "/")))
+;;             page-namespace (db-model/get-page-namespace repo page)
+;;             page-namespace (util/get-page-original-name page-namespace)]
+;;         (js-debugger)
+;;         (cond
+;;           ; Only check pages if the current title is a 
+;;           (and (seq pages) (string/includes? page "/"))
+;;           pages
+;; 
+;;           page-namespace
+;;           [(string/split page-namespace "/")]
+;; 
+;;           :else
+;;           nil)))))
+
+(defn- get-hierarchy-page-name
+  "Gets the logical parent page name from a given string page name."
+  [page]
+  (assert (string? page))
+  (println (str "page: " page))
+  (string/join "/" (butlast (string/split page "/"))))
+
+; TODO: there are multiple source-of-truths for establishing a page hierarchy. :block/namespace and parsing out
+; the title. We should really only rely on one or the other. Considering the namespace property is explicit, I
+; lean towards that one, however parsing out the title is more flexible and easier to work with when renaming
+; and rebuilding the hierarchy. Further, relying on :block/namespace would also allow us to support aliases reliably
+; (see #4123). We can also adapt the same flexibility when parsing out the new-title in page-handler/rename-page-aux
+; so there's really no downsides that I can think of.
 (defn get-relation
+  "Accepts sanitized or unsanitized. Page is a the title of a page"
   [page]
   (when-let [page (or (text/get-nested-page-name page) page)]
-    (when (or (text/namespace-page? page)
-              (:block/_namespace (db/entity [:block/name (util/page-name-sanity-lc page)])))
-      (let [repo (state/get-current-repo)
-            namespace-pages (db/get-namespace-pages repo page)
-            parent-routes (db-model/get-page-namespace-routes repo page)
-            pages (->> (concat namespace-pages parent-routes)
-                       (distinct)
-                       (sort-by :block/name)
-                       (map (fn [page]
-                              (or (:block/original-name page) (:block/name page))))
-                       (map #(string/split % "/")))
-            page-namespace (db-model/get-page-namespace repo page)
-            page-namespace (util/get-page-original-name page-namespace)]
-        (cond
-          (seq pages)
-          pages
+    (cond
+      (text/namespace-page? page)
+      (let 
+       [repo (state/get-current-repo)
 
-          page-namespace
-          [(string/split page-namespace "/")]
+        ; TODO (#4129): Query by alias, but what happens when an alias changes?
+        ; parent-alias-routes (db-model/get-page-namespace-alias-routes repo page)
+        parent-routes (db-model/get-page-namespace-routes repo page)
+        parent-page (db-model/get-page-by-name repo (get-hierarchy-page-name page))
+        pages (->> (concat parent-routes [parent-page])
+                   (distinct)
+                   (sort-by :block/name)
+                   (map (fn [page]
+                          (or (:block/original-name page) (:block/name page))))
+                   (map #(string/split % "/")))]
+       (println (str "pages: " pages))
+       ; return pages
+       pages)
 
-          :else
-          nil)))))
+      ; Disabled because I don't think we want this until we can propegate renames
+      ; into the :block/namespace ref
+      #_(:block/_namespace (db/entity [:block/name (util/page-name-sanity-lc page)]))
+      #_(let 
+        [repo (state/get-current-repo)
+         page-namespace (db-model/get-page-namespace repo page)
+         page-namespace (util/get-page-original-name page-namespace)]
+        (js-debugger)
+        ; return namespace page from entity if it's not empty
+        (if (string/blank? page-namespace) [(string/split page-namespace "/")] nil))
+
+      :else
+      nil)))
 
 (rum/defc structures
   [page]
