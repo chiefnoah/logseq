@@ -1,11 +1,11 @@
 (ns frontend.components.hierarchy
   (:require [clojure.string :as string]
             [frontend.components.block :as block]
-            [frontend.db :as db]
             [frontend.db.model :as db-model]
             [frontend.state :as state]
             [frontend.text :as text]
             [frontend.ui :as ui]
+            [frontend.util.hierarchy :as hierarchy]
             [medley.core :as medley]
             [rum.core :as rum]
             [frontend.util :as util]))
@@ -38,13 +38,6 @@
 ;;           :else
 ;;           nil)))))
 
-(defn- get-hierarchy-page-name
-  "Gets the logical parent page name from a given string page name."
-  [page]
-  (assert (string? page))
-  (println (str "page: " page))
-  (string/join "/" (butlast (string/split page "/"))))
-
 ; TODO: there are multiple source-of-truths for establishing a page hierarchy. :block/namespace and parsing out
 ; the title. We should really only rely on one or the other. Considering the namespace property is explicit, I
 ; lean towards that one, however parsing out the title is more flexible and easier to work with when renaming
@@ -63,8 +56,9 @@
         ; TODO (#4129): Query by alias, but what happens when an alias changes?
         ; parent-alias-routes (db-model/get-page-namespace-alias-routes repo page)
         parent-routes (db-model/get-page-namespace-routes repo page)
-        parent-page (db-model/get-page-by-name repo (get-hierarchy-page-name page))
-        pages (->> (concat parent-routes [parent-page])
+        parent-page (db-model/get-page-by-name repo (hierarchy/get-hierarchy-page-name page))
+        ; children-pages (db-model/get-namespace-hierarchy repo page)
+        pages (->> (concat parent-routes [parent-page] #_children-pages)
                    (distinct)
                    (sort-by :block/name)
                    (map (fn [page]
@@ -73,17 +67,6 @@
        (println (str "pages: " pages))
        ; return pages
        pages)
-
-      ; Disabled because I don't think we want this until we can propegate renames
-      ; into the :block/namespace ref
-      #_(:block/_namespace (db/entity [:block/name (util/page-name-sanity-lc page)]))
-      #_(let 
-        [repo (state/get-current-repo)
-         page-namespace (db-model/get-page-namespace repo page)
-         page-namespace (util/get-page-original-name page-namespace)]
-        (js-debugger)
-        ; return namespace page from entity if it's not empty
-        (if (string/blank? page-namespace) [(string/split page-namespace "/")] nil))
 
       :else
       nil)))

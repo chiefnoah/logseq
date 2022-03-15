@@ -31,6 +31,7 @@
             [frontend.util.cursor :as cursor]
             [frontend.util.property :as property]
             [frontend.util.page-property :as page-property]
+            [frontend.util.hierarchy :as hierarchy]
             [goog.object :as gobj]
             [lambdaisland.glogi :as log]
             [promesa.core :as p]

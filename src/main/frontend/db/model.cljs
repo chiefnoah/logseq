@@ -1374,8 +1374,7 @@
       ffirst))
 
 (defn get-namespace-pages
-  "Accepts both sanitized and unsanitized namespaces.
-  Namespace is a full page :block/name"
+  "Accepts both sanitized and unsanitized namespaces."
   [repo namespace]
   (assert (string? namespace))
   (let [namespace (util/page-name-sanity-lc namespace)]
